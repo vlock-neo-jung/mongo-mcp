@@ -1,5 +1,8 @@
 import { Collection } from "mongodb";
+import { z } from "zod";
+import { MongoErrorCode, MongoErrorSchema } from "./errors.js";
 
+// Legacy Interface Definitions
 export interface MongoFieldSchema {
   field: string;
   type: string;
@@ -125,3 +128,120 @@ export async function buildCollectionSchema(
     indexes,
   };
 }
+
+// Zod Schema Definitions
+// MongoDB Collection Zod Schema
+export const ZodMongoCollectionSchema = z.object({
+  collectionName: z.string(),
+  databaseName: z.string(),
+  indexes: z
+    .array(
+      z.object({
+        name: z.string(),
+        keys: z.record(z.union([z.number(), z.string()])),
+        unique: z.optional(z.boolean()),
+      })
+    )
+    .optional(),
+});
+
+export type ZodMongoCollection = z.infer<typeof ZodMongoCollectionSchema>;
+
+// MongoDB Document Zod Schema
+export const ZodMongoDocumentSchema = z.object({
+  document: z.record(z.unknown()),
+});
+
+export type ZodMongoDocument = z.infer<typeof ZodMongoDocumentSchema>;
+
+// MongoDB Query Operators
+export const MongoQueryOperatorSchema = z.object({
+  $eq: z.unknown().optional(),
+  $gt: z.unknown().optional(),
+  $gte: z.unknown().optional(),
+  $in: z.array(z.unknown()).optional(),
+  $lt: z.unknown().optional(),
+  $lte: z.unknown().optional(),
+  $ne: z.unknown().optional(),
+  $nin: z.array(z.unknown()).optional(),
+  $and: z.array(z.unknown()).optional(),
+  $not: z.unknown().optional(),
+  $nor: z.array(z.unknown()).optional(),
+  $or: z.array(z.unknown()).optional(),
+  $exists: z.boolean().optional(),
+  $type: z.union([z.string(), z.number()]).optional(),
+  $expr: z.unknown().optional(),
+  $regex: z.string().optional(),
+  $options: z.string().optional(),
+});
+
+export type MongoQueryOperator = z.infer<typeof MongoQueryOperatorSchema>;
+
+// MongoDB Sort Options
+export const MongoSortSchema = z.record(z.union([z.literal(1), z.literal(-1)]));
+
+export type MongoSort = z.infer<typeof MongoSortSchema>;
+
+// MongoDB Update Operators
+export const MongoUpdateOperatorSchema = z.object({
+  $set: z.record(z.unknown()).optional(),
+  $unset: z.record(z.unknown()).optional(),
+  $inc: z.record(z.number()).optional(),
+  $mul: z.record(z.number()).optional(),
+  $rename: z.record(z.string()).optional(),
+  $min: z.record(z.unknown()).optional(),
+  $max: z.record(z.unknown()).optional(),
+  $currentDate: z.record(z.union([z.boolean(), z.object({ $type: z.literal("timestamp") })])).optional(),
+  $addToSet: z.record(z.unknown()).optional(),
+  $pop: z.record(z.union([z.literal(1), z.literal(-1)])).optional(),
+  $pull: z.record(z.unknown()).optional(),
+  $push: z.record(z.unknown()).optional(),
+  $pullAll: z.record(z.array(z.unknown())).optional(),
+});
+
+export type MongoUpdateOperator = z.infer<typeof MongoUpdateOperatorSchema>;
+
+// MongoDB Aggregate Pipeline Stage
+export const MongoAggregateStageSchema = z.record(z.unknown());
+export type MongoAggregateStage = z.infer<typeof MongoAggregateStageSchema>;
+
+// MongoDB Aggregate Pipeline
+export const MongoAggregatePipelineSchema = z.array(MongoAggregateStageSchema);
+export type MongoAggregatePipeline = z.infer<typeof MongoAggregatePipelineSchema>;
+
+// MongoDB Schema Inference Types
+export const ZodMongoFieldSchemaSchema = z.lazy(() => 
+  z.object({
+    type: z.union([
+      z.literal("string"),
+      z.literal("number"),
+      z.literal("boolean"),
+      z.literal("date"),
+      z.literal("objectId"),
+      z.literal("array"),
+      z.literal("object"),
+      z.literal("null"),
+      z.literal("mixed"),
+    ]),
+    required: z.boolean().optional(),
+    unique: z.boolean().optional(),
+    indexed: z.boolean().optional(),
+    items: ZodMongoFieldSchemaSchema.optional(),
+    properties: z.record(ZodMongoFieldSchemaSchema).optional(),
+  })
+);
+
+export type ZodMongoFieldSchema = z.infer<typeof ZodMongoFieldSchemaSchema>;
+
+export const ZodMongoCollectionSchemaSchema = z.object({
+  name: z.string(),
+  fields: z.record(ZodMongoFieldSchemaSchema),
+  options: z
+    .object({
+      timestamps: z.boolean().optional(),
+      strict: z.boolean().optional(),
+    })
+    .optional(),
+});
+
+export type ZodMongoCollectionSchema = z.infer<typeof ZodMongoCollectionSchemaSchema>;
