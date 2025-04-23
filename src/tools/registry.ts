@@ -10,6 +10,12 @@ import { ListIndexesTool } from "./indexes/list-indexes.js";
 import { McpError, ErrorCode, Tool } from "@modelcontextprotocol/sdk/types.js";
 import { logger } from "../utils/logger.js";
 
+// 새로운 도구 import
+import { AggregateTool } from "./documents/aggregate.js";
+import { CountTool } from "./documents/count.js";
+import { DistinctTool } from "./documents/distinct.js";
+import { ServerInfoTool } from "./server/server-info.js";
+
 export class ToolRegistry {
   private tools: Map<string, BaseTool<any>> = new Map();
 
@@ -22,6 +28,12 @@ export class ToolRegistry {
     this.registerTool(new CreateIndexTool());
     this.registerTool(new DropIndexTool());
     this.registerTool(new ListIndexesTool());
+    
+    // 새로운 도구 등록
+    this.registerTool(new AggregateTool());
+    this.registerTool(new CountTool());
+    this.registerTool(new DistinctTool());
+    this.registerTool(new ServerInfoTool());
     
     // @sample 호환성 검사
     this.verifyToolCompatibility();
