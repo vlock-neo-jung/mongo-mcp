@@ -2,7 +2,7 @@ import { BaseTool } from "./base/tool.js";
 import { ListCollectionsTool } from "./collection/list-collections.js";
 import { DeleteOneTool } from "./documents/delete-one.js";
 import { FindTool } from "./documents/find.js";
-import { InsertOneTool } from "./documents/insert-one.js";
+import { InsertTool } from "./documents/insert.js";
 import { UpdateOneTool } from "./documents/update-one.js";
 import { CreateIndexTool } from "./indexes/create-index.js";
 import { DropIndexTool } from "./indexes/drop-index.js";
@@ -22,7 +22,7 @@ export class ToolRegistry {
   constructor() {
     this.registerTool(new ListCollectionsTool());
     this.registerTool(new FindTool());
-    this.registerTool(new InsertOneTool());
+    this.registerTool(new InsertTool());
     this.registerTool(new UpdateOneTool());
     this.registerTool(new DeleteOneTool());
     this.registerTool(new CreateIndexTool());
@@ -77,13 +77,13 @@ export class ToolRegistry {
     const requiredToolNames = [
       "query",       // 이전 이름: find
       "update",      // UpdateOneTool
-      "insert",      // InsertOneTool
-      "aggregate",   // AggregateTool (아직 구현되지 않음)
-      "count",       // CountTool (아직 구현되지 않음)
-      "distinct",    // DistinctTool (아직 구현되지 않음)
+      "insert",      // InsertTool
+      "aggregate",   // AggregateTool
+      "count",       // CountTool
+      "distinct",    // DistinctTool
       "createIndex", // CreateIndexTool
       "listCollections", // ListCollectionsTool
-      "serverInfo"   // ServerInfoTool (아직 구현되지 않음)
+      "serverInfo"   // ServerInfoTool
     ];
     
     // 등록된 도구 이름 목록
