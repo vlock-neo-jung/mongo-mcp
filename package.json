@@ -30,7 +30,8 @@
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "0.6.0",
-    "mongodb": "^6.3.0"
+    "mongodb": "^6.3.0",
+    "zod": "^3.24.3"
   },
   "devDependencies": {
     "@types/node": "^20.10.5",

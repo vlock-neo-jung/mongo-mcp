@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+      "mongodb": {
+        "command": "node",
+        "args": [
+          "/home/neo/toy-project/mcp-server/mongo-mcp/dist/index.js",
+          "mongodb+srv://fwy1216:Mmneo12!^12@cluster0.dxllnon.mongodb.net/dev_graph_db?retryWrites=true&w=majority&appName=Cluster0"
+        ]
+      }
+    }
+  }

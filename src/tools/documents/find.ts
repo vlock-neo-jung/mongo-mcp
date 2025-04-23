@@ -20,7 +20,7 @@ export interface FindParams extends ToolParams {
 }
 
 export class FindTool extends BaseTool<FindParams> {
-  name = "find";
+  name = "query";
   description = "Find documents in a MongoDB collection";
 
   inputSchema = {
