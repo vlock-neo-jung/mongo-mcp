@@ -8,6 +8,7 @@ import { CreateIndexTool } from "./indexes/create-index.js";
 import { DropIndexTool } from "./indexes/drop-index.js";
 import { ListIndexesTool } from "./indexes/list-indexes.js";
 import { McpError, ErrorCode, Tool } from "@modelcontextprotocol/sdk/types.js";
+import { logger } from "../utils/logger.js";
 
 export class ToolRegistry {
   private tools: Map<string, BaseTool<any>> = new Map();
@@ -21,10 +22,14 @@ export class ToolRegistry {
     this.registerTool(new CreateIndexTool());
     this.registerTool(new DropIndexTool());
     this.registerTool(new ListIndexesTool());
+    
+    // @sample 호환성 검사
+    this.verifyToolCompatibility();
   }
 
   registerTool(tool: BaseTool<any>) {
     this.tools.set(tool.name, tool);
+    logger.debug(`Registered tool: ${tool.name}`, { toolName: tool.name });
   }
 
   getTool(name: string): BaseTool<any> | undefined {
@@ -52,5 +57,36 @@ export class ToolRegistry {
         },
       };
     });
+  }
+  
+  // @sample 호환성 검사
+  private verifyToolCompatibility() {
+    // 필수 도구 이름 목록
+    const requiredToolNames = [
+      "query",       // 이전 이름: find
+      "update",      // UpdateOneTool
+      "insert",      // InsertOneTool
+      "aggregate",   // AggregateTool (아직 구현되지 않음)
+      "count",       // CountTool (아직 구현되지 않음)
+      "distinct",    // DistinctTool (아직 구현되지 않음)
+      "createIndex", // CreateIndexTool
+      "listCollections", // ListCollectionsTool
+      "serverInfo"   // ServerInfoTool (아직 구현되지 않음)
+    ];
+    
+    // 등록된 도구 이름 목록
+    const registeredToolNames = Array.from(this.tools.keys());
+    
+    // 누락된 도구 찾기
+    const missingTools = requiredToolNames.filter(name => !registeredToolNames.includes(name));
+    
+    if (missingTools.length > 0) {
+      logger.warn(`Missing required tools for @sample compatibility: ${missingTools.join(', ')}`, {
+        missingTools,
+        registeredTools: registeredToolNames
+      });
+    } else {
+      logger.info("All required tools for @sample compatibility are registered");
+    }
   }
 }
