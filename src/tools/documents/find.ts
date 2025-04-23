@@ -1,158 +1,136 @@
 import { db } from "../../mongodb/client.js";
 import { BaseTool, ToolParams, ToolResponse } from "../base/tool.js";
-import { MongoQueryOperator, MongoSort } from "../../mongodb/schema.js";
 import { logger } from "../../utils/logger.js";
 import { McpError, ErrorCode } from "@modelcontextprotocol/sdk/types.js";
+import { 
+  validateFilter, 
+  validateProjection, 
+  validateSort, 
+  validateSystemCollection,
+  cleanOptions 
+} from "../../utils/mongodb-validators.js";
 
 export interface FindParams extends ToolParams {
   collection: string;
-  filter?: Record<string, unknown> | string | {
-    field: string;
-    value: unknown;
-    operator: string;
-  };
-  projection?: Record<string, 0 | 1>;
+  filter?: Record<string, unknown> | string;
+  projection?: Record<string, unknown> | string;
+  sort?: Record<string, unknown> | string;
   limit?: number;
   skip?: number;
-  sort?: MongoSort;
 }
 
 export class FindTool extends BaseTool<FindParams> {
-  name = "query";
-  description = "Query documents in a collection using MongoDB query syntax";
+  name = "find";
+  description = "Find documents in a MongoDB collection";
+
   inputSchema = {
     type: "object" as const,
     properties: {
       collection: {
         type: "string",
-        description: "Name of the collection to query",
+        description: "The name of the collection to find documents in",
       },
       filter: {
         type: ["object", "string"],
-        description: "MongoDB query filter with operators like $gt, $lt, $in, etc. Can be a JSON string or object",
-        default: {},
+        description:
+          "MongoDB query filter to select documents. Can be JSON string or filter object.",
       },
       projection: {
-        type: "object",
-        description: "Fields to include (1) or exclude (0)",
-        default: {},
+        type: ["object", "string"],
+        description:
+          "Fields to include or exclude from the result documents. Can be JSON string or projection object.",
+      },
+      sort: {
+        type: ["object", "string"],
+        description:
+          "Sort order for result documents. Can be JSON string or sort object.",
       },
       limit: {
         type: "number",
-        description: "Maximum documents to return",
-        default: 100,
-        minimum: 1,
-        maximum: 1000,
+        description: "Maximum number of documents to return",
       },
       skip: {
         type: "number",
         description: "Number of documents to skip",
-        default: 0,
-        minimum: 0,
-      },
-      sort: {
-        type: "object",
-        description: "Sort order: 1 for ascending, -1 for descending",
-        default: {},
       },
     },
     required: ["collection"],
   };
 
   async execute(params: FindParams): Promise<ToolResponse> {
+    const { collection, filter, projection, sort, limit, skip } = params;
+
     try {
-      const collection = this.validateCollection(params.collection);
-      
+      logger.debug("Executing find operation", {
+        toolName: this.name,
+        collection,
+        filter,
+        projection,
+        sort,
+        limit,
+        skip,
+      });
+
       // 시스템 컬렉션 접근 방지
-      if (collection.startsWith("system.")) {
-        const errorMessage = "Access to system collections is not allowed";
-        logger.warn(errorMessage, { toolName: this.name, collection });
-        throw new McpError(ErrorCode.InvalidRequest, errorMessage);
+      validateSystemCollection(collection, this.name);
+
+      // 필터 처리
+      const parsedFilter = filter ? validateFilter(filter, this.name) : {};
+
+      // 프로젝션 처리
+      const parsedProjection = projection 
+        ? validateProjection(projection, this.name) 
+        : undefined;
+
+      // 정렬 처리
+      const parsedSort = sort 
+        ? validateSort(sort, this.name) 
+        : undefined;
+
+      // 조회 실행
+      const coll = db.collection(collection);
+      const cursor = coll.find(parsedFilter, {
+        projection: parsedProjection,
+      });
+
+      // 정렬, 페이징 적용
+      if (parsedSort) {
+        cursor.sort(parsedSort);
       }
 
-      // 필터 파싱 및 검증
-      let queryFilter: Record<string, unknown> = {};
-      if (params.filter) {
-        if (typeof params.filter === "string") {
-          try {
-            queryFilter = JSON.parse(params.filter);
-          } catch (e) {
-            const errorMessage = "Invalid filter format: must be a valid JSON object";
-            logger.warn(errorMessage, { toolName: this.name, filter: params.filter });
-            throw new McpError(ErrorCode.InvalidRequest, errorMessage);
-          }
-        } else if (
-          typeof params.filter === "object" && 
-          params.filter !== null && 
-          !Array.isArray(params.filter)
-        ) {
-          // 구조화된 필터 확인 (field, value, operator 속성 포함)
-          if (
-            'field' in params.filter && 
-            typeof params.filter.field === 'string' &&
-            'value' in params.filter &&
-            'operator' in params.filter && 
-            typeof params.filter.operator === 'string'
-          ) {
-            // MongoDB 쿼리 형식으로 변환
-            if (params.filter.operator === "$eq") {
-              // $eq 연산자는 단순화 가능
-              queryFilter = { [params.filter.field]: params.filter.value };
-            } else {
-              queryFilter = {
-                [params.filter.field]: { [params.filter.operator]: params.filter.value }
-              };
-            }
-          } else {
-            // 이미 MongoDB 형식인 경우 직접 사용
-            queryFilter = params.filter as Record<string, unknown>;
-          }
-        } else {
-          const errorMessage = "Query filter must be a plain object or JSON string";
-          logger.warn(errorMessage, { toolName: this.name, filterType: typeof params.filter });
-          throw new McpError(ErrorCode.InvalidRequest, errorMessage);
-        }
+      if (skip !== undefined && typeof skip === "number") {
+        cursor.skip(skip);
       }
 
-      // 쿼리 실행
-      let query = db.collection(collection).find(queryFilter);
-      
-      // 프로젝션 적용
-      if (params.projection && Object.keys(params.projection).length > 0) {
-        query = query.project(params.projection);
+      if (limit !== undefined && typeof limit === "number") {
+        cursor.limit(limit);
       }
-      
-      // 정렬 적용
-      if (params.sort && Object.keys(params.sort).length > 0) {
-        query = query.sort(params.sort);
-      }
-      
-      // 페이징 적용
-      if (typeof params.skip === 'number' && params.skip > 0) {
-        query = query.skip(params.skip);
-      }
-      
-      // 결과 제한
-      const limit = Math.min(params.limit || 100, 1000);
-      query = query.limit(limit);
-      
-      // 쿼리 실행 및 결과 반환
-      const results = await query.toArray();
-      
-      logger.debug(`Retrieved ${results.length} documents from ${collection}`, { 
+
+      // 결과 조회
+      const results = await cursor.toArray();
+
+      logger.debug("Find operation completed successfully", {
         toolName: this.name,
         collection,
         resultCount: results.length,
-        limit
       });
 
       return {
         content: [
-          { type: "text" as const, text: JSON.stringify(results, null, 2) },
+          {
+            type: "text" as const,
+            text: JSON.stringify(results, null, 2),
+          },
         ],
         isError: false,
       };
     } catch (error) {
+      logger.error("Find operation failed", error, {
+        toolName: this.name,
+        collection,
+        filter,
+      });
+
       return this.handleError(error);
     }
   }
