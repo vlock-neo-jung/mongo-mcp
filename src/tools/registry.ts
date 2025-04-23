@@ -78,6 +78,7 @@ export class ToolRegistry {
       "query",       // 이전 이름: find
       "update",      // UpdateOneTool
       "insert",      // InsertTool
+      "delete",      // DeleteTool
       "aggregate",   // AggregateTool
       "count",       // CountTool
       "distinct",    // DistinctTool
