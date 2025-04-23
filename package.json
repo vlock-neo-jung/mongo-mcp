@@ -15,10 +15,12 @@
     "dist"
   ],
   "scripts": {
+    "start": "tsx src/index.ts",
     "build": "tsc && shx chmod +x dist/*.js",
     "prepare": "npm run build",
     "watch": "tsc --watch",
-    "seed": "tsx src/seed.ts"
+    "seed": "tsx src/seed.ts",
+    "inspect:studio": "npx @modelcontextprotocol/inspector  node dist/index.js"
   },
   "keywords": [
     "mcp",
@@ -30,7 +32,11 @@
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "0.6.0",
+    "@types/express": "^5.0.1",
+    "@types/uuid": "^10.0.0",
+    "express": "^5.1.0",
     "mongodb": "^6.3.0",
+    "uuid": "^11.1.0",
     "zod": "^3.24.3"
   },
   "devDependencies": {
